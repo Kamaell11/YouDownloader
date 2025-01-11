@@ -8,29 +8,30 @@ def clean_filename(filename):
 
 def download_video(url, resolution, download_path, platform="YouTube"):
     try:
-        if platform == "YouTube":
-            ydl_opts = {
-                'format': f'bestvideo[height<={resolution}]',
-                'outtmpl': os.path.join(download_path, '%(title)s.%(ext)s'),
-            }
-        elif platform == "Instagram":
-            ydl_opts = {
-                'format': 'mp4',
-                'outtmpl': os.path.join(download_path, '%(title)s.%(ext)s'),
-            }
+        os.makedirs(download_path, exist_ok=True)  # Ensure the path exists
+        
+        ydl_opts = {
+            'format': f'bestvideo[height<={resolution}]' if platform == "YouTube" else 'mp4',
+            'outtmpl': os.path.join(download_path, '%(title)s.%(ext)s'),
+        }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(url, download=True)
             title = info_dict.get('title', 'Instagram_Reel')
-            clean_title = clean_filename(title)
-            os.makedirs(download_path, exist_ok=True)
+            extension = info_dict.get('ext', 'mp4')
             
-            file_path = os.path.join(download_path, f"{clean_title}.mp4")
+            clean_title = clean_filename(title)  # Sanitize the title
+            file_path = os.path.join(download_path, f"{clean_title}.{extension}")
+            
+            # Rename the file if the sanitized name doesn't match the yt_dlp output
+            original_path = ydl.prepare_filename(info_dict)
+            if original_path != file_path:
+                os.rename(original_path, file_path)
+            
             return file_path
     except Exception as e:
         st.error(f"Wystąpił błąd: {str(e)}")
         return None
-
 
 st.title("Video Downloader")
 st.markdown("Wprowadź URL, aby pobrać filmy z YouTube lub Reels z Instagrama!")
@@ -49,7 +50,7 @@ with tab1:
             st.error("Proszę wprowadzić prawidłowy URL.")
         else:
             st.info("Rozpoczynam pobieranie...")
-            download_dir = "downloads"
+            download_dir = "downloads/youtube"
             file_path = download_video(url, resolution, download_dir, platform="YouTube")
             if file_path:
                 
