@@ -1,44 +1,90 @@
 import yt_dlp
 import streamlit as st
 import os
+import re
 
-def download_video(url, resolution, download_path):
+def clean_filename(filename):
+    return re.sub(r'[<>:"/\\|?*]', '_', filename)
+
+def download_video(url, resolution, download_path, platform="YouTube"):
     try:
-        ydl_opts = {
-            'format': f'bestvideo[height<={resolution}]',
-            'outtmpl': os.path.join(download_path, '%(title)s.%(ext)s'),
-        }
+        if platform == "YouTube":
+            ydl_opts = {
+                'format': f'bestvideo[height<={resolution}]',
+                'outtmpl': os.path.join(download_path, '%(title)s.%(ext)s'),
+            }
+        elif platform == "Instagram":
+            ydl_opts = {
+                'format': 'mp4',
+                'outtmpl': os.path.join(download_path, '%(title)s.%(ext)s'),
+            }
+        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(url, download=True)
-            title = info_dict['title']
+            title = info_dict.get('title', 'Instagram_Reel')
+            clean_title = clean_filename(title)
+            os.makedirs(download_path, exist_ok=True)
             
-           
-            file_path = os.path.join(download_path, f"{title}.mp4")
+            file_path = os.path.join(download_path, f"{clean_title}.mp4")
             return file_path
     except Exception as e:
         st.error(f"Wystąpił błąd: {str(e)}")
         return None
 
 
-st.title("YouTube Video Downloader")
-st.markdown("Wprowadź URL filmu, wybierz rozdzielczość i pobierz film na swoje urządzenie!")
+st.title("Video Downloader")
+st.markdown("Wprowadź URL, aby pobrać filmy z YouTube lub Reels z Instagrama!")
 
 
-url = st.text_input("Wprowadź URL filmu z YouTube:")
-resolution = st.selectbox("Wybierz rozdzielczość:", ["360p", "480p", "720p", "1080p"])
-download_button = st.button("Pobierz")
+tab1, tab2 = st.tabs(["YouTube", "Instagram"])
+
+with tab1:
+    st.header("YouTube Video Downloader")
+    url = st.text_input("Wprowadź URL filmu z YouTube:")
+    resolution = st.selectbox("Wybierz rozdzielczość:", ["360p", "480p", "720p", "1080p"])
+    download_button = st.button("Pobierz YouTube Video", key="youtube_download")
+
+    if download_button:
+        if not url:
+            st.error("Proszę wprowadzić prawidłowy URL.")
+        else:
+            st.info("Rozpoczynam pobieranie...")
+            download_dir = "downloads"
+            file_path = download_video(url, resolution, download_dir, platform="YouTube")
+            if file_path:
+                
+                with open(file_path, "rb") as f:
+                    st.download_button(
+                        label="Pobierz film",
+                        data=f,
+                        file_name=os.path.basename(file_path),
+                        mime="video/mp4",
+                    )
+                st.success("Film został pobrany! Kliknij przycisk, aby pobrać go na swoje urządzenie.")
 
 
-if download_button:
-    if not url:
-        st.error("Proszę wprowadzić prawidłowy URL.")
-    else:
-        st.info("Rozpoczynam pobieranie...")
-        download_dir = "downloads"
-        os.makedirs(download_dir, exist_ok=True)
-        file_path = download_video(url, resolution, download_dir)
-        if file_path:
-            st.success("Film został pobrany!")
+with tab2:
+    st.header("Instagram Reels Downloader")
+    insta_url = st.text_input("Wprowadź URL rolki z Instagrama:")
+    download_button_insta = st.button("Pobierz Instagram Reel", key="instagram_download")
+
+    if download_button_insta:
+        if not insta_url:
+            st.error("Proszę wprowadzić prawidłowy URL.")
+        else:
+            st.info("Rozpoczynam pobieranie...")
+            download_path = "downloads/instagram"  
+            file_path = download_video(insta_url, resolution=None, download_path=download_path, platform="Instagram")
+            if file_path:
+           
+                with open(file_path, "rb") as f:
+                    st.download_button(
+                        label="Pobierz Reel",
+                        data=f,
+                        file_name=os.path.basename(file_path),
+                        mime="video/mp4",
+                    )
+                st.success("Reel został pobrany! Kliknij przycisk, aby pobrać go na swoje urządzenie.")
 
 
 st.markdown("Aplikacja stworzona przy użyciu Python, yt-dlp i Streamlit. 🚀")
