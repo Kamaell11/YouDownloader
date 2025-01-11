@@ -1,7 +1,8 @@
 import yt_dlp
 import os
-from app.utils import clean_filename
+from utils import clean_filename
 
+# Download the video based on the URL and resolution
 def download_video(url, resolution, download_path, platform="YouTube"):
     try:
         os.makedirs(download_path, exist_ok=True)  # Ensure the path exists
